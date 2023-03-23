@@ -22,7 +22,7 @@ from connction_string import CONN_EVENT_HUB, CONSUMER_GROUP
 from cloud_operation import action_by_received
 
 
-from server.utils.iot_log import logger
+from utils.iot_log import logger
 
 
 thread_lock = threading.Lock()

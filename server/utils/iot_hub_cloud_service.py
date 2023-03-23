@@ -7,7 +7,7 @@
 import time
 
 from azure.iot.hub import IoTHubRegistryManager
-from iot_log import logger
+from .iot_log import logger
 
 
 

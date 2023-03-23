@@ -9,14 +9,14 @@ import time, copy
 
 from azure.core.exceptions import ResourceNotFoundError
 
-from server.models.data_model import DataModel
+from models.data_model import DataModel
 
-from server.utils.iot_hub_conn_info import IoTHubConnInfo
-from server.utils.blob_operation import BlobService
-from server.utils.iot_hub_cloud_service import IoTHubManager
+from utils.iot_hub_conn_info import IoTHubConnInfo
+from utils.blob_operation import BlobService
+from utils.iot_hub_cloud_service import IoTHubManager
 from connction_string import BLOB_CONN_STR, SCENARIO_USER, SCENARIO_SQUARE
-from server.utils.iot_log import logger
-from server.utils.mongo_utils import MongoDBClient
+from utils.iot_log import logger
+from utils.mongo_utils import MongoDBClient
 
 
 

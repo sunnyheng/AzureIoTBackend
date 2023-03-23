@@ -8,7 +8,8 @@ from logging.handlers import TimedRotatingFileHandler
 
 def setup_log(log_name):
     logger = logging.getLogger(log_name)
-    log_path = os.path.join("C:\\project\\backend\\log", log_name)
+    
+    log_path = os.path.join("D:\\CloudIoT\\backend\\log", log_name)
     logger.setLevel(logging.DEBUG)
     file_handler = TimedRotatingFileHandler(filename=log_path, when="MIDNIGHT", interval=1, backupCount=30, encoding="utf-8")
     file_handler.suffix = "%Y-%m-%d.log"

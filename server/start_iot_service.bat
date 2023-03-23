@@ -1,6 +1,6 @@
 @echo off
 
-cmd /k "cd /d C:\project\backend\Scripts & activate & cd C:\project\backend\server & python phone_car_cloud_end.py"
+cmd /k "cd /d D:\CloudIoT\backend\Scripts & activate & cd D:\CloudIoT\backend\server & python phone_car_cloud_end.py"
 
 
 
