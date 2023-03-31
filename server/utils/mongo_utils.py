@@ -54,7 +54,7 @@ class MongoDBClient(object):
             self.collection.update(condition, doc)
 
     def get_re(self):
-        return {"user_id":"12345", "car":["car"], "phone":["phone"], "hub_conn_str":"HostName=issec-iot.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=IzKVWsLMKvNnnOS55NEZZKUHF4TmSx8cOznJtQy7SJI="}
+        return {"user_id":"12345", "car":["car"], "phone":["phone"], "hub_conn_str":"HostName=issec-dev.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=S3tabkHGbNZkYGUBl/zeyqd9LFhel7tWDqhY3HT7Mec="}
 
     def close(self):
         if self.client:

@@ -3,7 +3,7 @@ from azure.iot.hub import IoTHubRegistryManager
 
 # from init_logger import logger
 
-def send_mes_to_multi_iothub(blob_str, iothub_conn_list, device_id_list, logger):
+def send_mes_to_multi_iothub(blob_str, iothub_conn_list, device_id_list, logger=None):
     result_status = False
     if isinstance(iothub_conn_list, list) and isinstance(device_id_list, list):
         result_status = True
@@ -15,7 +15,7 @@ def send_mes_to_multi_iothub(blob_str, iothub_conn_list, device_id_list, logger)
 
 
 #device_id should be get from db, the mapping file should be stored in db
-def send_mes_to_iothub(blob_str, iothub_conn_str, device_id, logger):
+def send_mes_to_iothub(blob_str, iothub_conn_str, device_id, logger=None):
     try:
         # logger.info("[iot] start create iothub client.")
         # Create IoTHubRegistryManager
@@ -29,7 +29,7 @@ def send_mes_to_iothub(blob_str, iothub_conn_str, device_id, logger):
         # optional: assign system properties
         # props.update(messageId="message_1")
         props.update(correlationId=device_id)
-        props.update(expiryTimeUtc=10)
+        # props.update(expiryTimeUtc=10)
         props.update(contentType="application/json")
 
         try:

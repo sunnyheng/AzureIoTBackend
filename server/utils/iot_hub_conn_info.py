@@ -23,8 +23,8 @@ class IoTHubConnInfo(object):
 
     def get_result_by_user_id(self, condition={}):
         # result = db_client.select_data_by_user_id(condition)
-        self.record = {"user_id":123456, "car":["car"], "phone":["phone"],
-                "hub_conn_str": "HostName=issec-iot.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=IzKVWsLMKvNnnOS55NEZZKUHF4TmSx8cOznJtQy7SJI="
+        self.record = {"user_id":"12345", "car":["car"], "phone":["phone"],
+                "hub_conn_str": "HostName=issec-dev.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=S3tabkHGbNZkYGUBl/zeyqd9LFhel7tWDqhY3HT7Mec="
                 }
         return self.record
 
@@ -33,6 +33,7 @@ class IoTHubConnInfo(object):
 
     def set_car_list(self):
         self.car_list = self.record.get("car")
+        print('self.car_list ' , self.car_list )
 
     def set_phone_list(self):
         self.phone_list = self.record.get("phone")

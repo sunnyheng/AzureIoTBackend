@@ -106,7 +106,7 @@ def add_data(conn_obj, iothub_client, blob_client, event_json):
                     logger.error("[ADD]Failed to send c2d message(ADD) to " + device_id + ". More details:" + str(se))
                     print("[ADD]Failed to send c2d message(ADD) to " + device_id)
     except Exception as add_e:
-        logger.error("[MODIFY]Failed to handle add scenario, more details:" + str(add_e))
+        logger.error("[ADD]Failed to handle add scenario, more details:" + str(add_e))
 
 
 def other_data(conn_obj, iothub_client, blob_client, event_json):
@@ -434,12 +434,17 @@ def get_event_prop(event):
     coll_client = get_mongo_client("scenario_db", "user")
     # sys_props = event.system_properties
     event_props = event.properties
+    logger.debug("Testing get the event props")
+    logger.debug(event_props)
     # device_type = convert_to_str(event_props.get(b"DEVICE_TYPE")) or "PHONE"
     # operation_type = convert_to_str(event_props.get(b"OPERATION_TYPE")) or "SYNC"
     # device_id = convert_to_str(event_props.get(b"$.cdid")) or "phone"
     device_type = convert_to_str(event_props.get(b"DEVICE_TYPE"))
     operation_type = convert_to_str(event_props.get(b"OPERATION_TYPE"))
-    device_id = convert_to_str(event_props.get(b"$.cdid"))
+    device_id_a = convert_to_str(event_props.get(b"$.cdid"))
+    device_id_b = convert_to_str(event_props.get(b"iothub-connection-device-id"))
+    device_id = device_id_a or device_id_b
+
 
     user_id = event.correlation_id
 

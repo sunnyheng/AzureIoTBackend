@@ -7,6 +7,8 @@ from azure.storage.blob import BlobServiceClient
 from azure.core.exceptions import ResourceNotFoundError
 from flask_cors import CORS
 
+from utils.blob_operation import BlobService
+
 import json, logging
 # from init_logger import setup_log
 
@@ -64,7 +66,10 @@ def get_blob_file():
         container_name = SCENARIO_TMPL_NAME
     print(container_name)
     blob_list = []
-    if file_name:
+    print("blob file_name" )
+    print(file_name)
+    if file_name and file_name != "undefined":
+
         # file_name = "user_vin_1001"
         blob_json = read_blob(file_name, container_name)
         if blob_json:
@@ -91,7 +96,8 @@ def publish():
         data_dict[key] = json.dumps(content)
         data_dict["ScenarioType"] = "ScenarioSquare"
         # logger.info("[server.py] publish content:" + json.dumps(content))
-        if send_mes_to_multi_iothub(json.dumps(data_dict), IOTHUB_CONNS, DEVICE_IDS, logger):
+        print("Start to send c2d message.")
+        if send_mes_to_multi_iothub(json.dumps(data_dict), IOTHUB_CONNS, DEVICE_IDS):
             return Response("success", 200)
         else: return Response("failed", 500)
     else:
@@ -123,6 +129,7 @@ def del_record():
 # upload function in cloud web, only upload the scenario template
 @app.route("/upload", methods=["GET", "POST"])
 def upload_data():
+
     try:
         if request.method == "POST":
             # if it is form data
@@ -218,7 +225,7 @@ def read_blob(file_name, container_name, container_client=None):
         blob_client.close()
         return blob_json
     except ResourceNotFoundError as ne:
-        logger.warning('Target blob cannot found:'+ str(ne))
+        # logger.warning('Target blob cannot found:'+ str(ne))
         return False
 
 
@@ -237,4 +244,4 @@ def del_azure_blob(id, container_name, container_client=None):
 
 
 if __name__ == "__main__":
-    app.run(host="172.20.10.14", port="30001", debug=True)
+    app.run(host="localhost", port="30001", debug=True)
