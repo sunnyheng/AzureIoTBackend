@@ -1,6 +1,8 @@
 # coding: utf-8
+import logging
 
 import pymongo
+import os
 
 # from mongo_utils import MongoDBClient
 # from cloud_operation import update_delete_id
@@ -19,6 +21,25 @@ import pymongo
 # update_delete_id(client, "123", "car", ["1023"])
 
 # print(re)
-import datetime
-print(datetime.datetime.now())
+# import datetime
+# print(datetime.datetime.now())
 
+from logging.handlers import RotatingFileHandler
+log_file = "D:/IoT_project/server/log/cloudweb"
+
+
+logger = logging.getLogger("test")
+
+logger.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter("[%(asctime)s] - [%(levelname)s] - %(message)s",
+                              datefmt="%Y-%m-%d %H:%M:%S")
+
+handler = RotatingFileHandler(log_file, maxBytes=1024, backupCount=10, encoding="utf-8")
+
+handler.setFormatter(formatter)
+
+logger.addHandler(handler)
+
+for i in range(50):
+    logger.debug("Testing 12322144244214214214............"+ str(i))
