@@ -32,7 +32,7 @@ thread_lock = threading.Lock()
 def on_event_batch(partition_context, events):
     for event in events:
         thread_lock.acquire()
-        logger.info("[iot] Telemetry received: "+ event.body_as_str())
+        logger.info("[iot] Telemetry received: " + event.body_as_str())
         print('Start')
 
         # logger.info("[iot] user id:"+ event.correlation_id)
@@ -71,9 +71,8 @@ class ConnThread(threading.Thread):
         event_hub_conn_client(self.event_hub_conn, self.consumer_group)
 
 
-
 def event_hub_conn_client(event_hub_conn, consumer_group):
-    logger.info("[iot] Start to create client to connect the Event hub that built-in iot hub.")
+
     client = EventHubConsumerClient.from_connection_string(
         conn_str=event_hub_conn,
         consumer_group=consumer_group)

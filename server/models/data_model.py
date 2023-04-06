@@ -3,7 +3,6 @@
 import json
 
 
-
 class DataModel(object):
     def __init__(self):
         super().__init__()
@@ -37,3 +36,15 @@ class DataModel(object):
 
         else:
             return "Delete message, delete id:%s." % str(self.deletedId)
+
+
+# content_list is list, deleted_id_list is list, scenario_type is one of ["ScenarioUser", "ScenarioSquare"]
+def convert_data_model(content_list, deleted_id_list, scenario_type):
+    data = {}
+    data_model = DataModel()
+    if deleted_id_list:
+        data_model.set_deleted_id(deleted_id_list)
+    if content_list:
+        data_model.set_content(content_list)
+    data[scenario_type] = data_model.__dict__
+    return data

@@ -1,23 +1,29 @@
 # coding: utf-8
 import os
-import re
-
 import logging
-from logging.handlers import TimedRotatingFileHandler
+from logging.handlers import RotatingFileHandler
 
 
 def setup_log(log_name):
-    logger = logging.getLogger(log_name)
-    
-    log_path = os.path.join("D:\\CloudIoT\\backend\\log", log_name)
-    logger.setLevel(logging.DEBUG)
-    file_handler = TimedRotatingFileHandler(filename=log_path, when="MIDNIGHT", interval=1, backupCount=30, encoding="utf-8")
-    file_handler.suffix = "%Y-%m-%d.log"
-    file_handler.extMatch = re.compile(r"^\d{4}-\d{2}-\d{2}.log$")
-    file_handler.setFormatter(logging.Formatter("[%(asctime)s] - [%(levelname)s] - %(message)s"))
-    logger.addHandler(file_handler)
-    return logger
+    log = logging.getLogger(log_name)
+    abs_file = os.path.join("D:\\IoT_project\\server\\log", log_name)
+    log.setLevel(logging.DEBUG)
+
+    handler = RotatingFileHandler(abs_file, maxBytes=1024*1024*5, backupCount=10, encoding="utf-8")
+    formatter = logging.Formatter("[%(asctime)s] - [%(levelname)s] - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    handler.setFormatter(formatter)
+    log.addHandler(handler)
+    return log
 
 
-logger = setup_log("iot_cloud")
+logger = setup_log("iot_log")
 
+
+def setup_handler(log_name="cloud-web"):
+    logging.basicConfig(level=logging.INFO)
+    abs_file = os.path.join("D:\\IoT_project\\server\\log", log_name)
+
+    handler = RotatingFileHandler(abs_file, maxBytes=1024*1024*5, backupCount=10, encoding="utf-8")
+    formatter = logging.Formatter("[%(asctime)s] - [%(levelname)s] - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    handler.setFormatter(formatter)
+    return handler

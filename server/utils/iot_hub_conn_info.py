@@ -38,3 +38,10 @@ class IoTHubConnInfo(object):
     def set_phone_list(self):
         self.phone_list = self.record.get("phone")
 
+
+def get_info(user_id, received_device_type, received_device_id, received_op_type):
+    iothub_conn_info_obj = IoTHubConnInfo(user_id, received_device_type, received_device_id, received_op_type)
+    iothub_conn_info_obj.get_result_by_user_id()
+
+    iothub_conn_info_obj.parse_record()
+    return iothub_conn_info_obj

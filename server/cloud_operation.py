@@ -12,11 +12,18 @@ from azure.core.exceptions import ResourceNotFoundError
 from models.data_model import DataModel
 
 from utils.iot_hub_conn_info import IoTHubConnInfo
-from utils.blob_operation import BlobService
+from utils.blob_operation import BlobService, del_azure_blob
+
 from utils.iot_hub_cloud_service import IoTHubManager
+from utils.iot_hub_cloud_service import check_and_send_c2d_message
+
 from connction_string import BLOB_CONN_STR, SCENARIO_USER, SCENARIO_SQUARE
 from utils.iot_log import logger
-from utils.mongo_utils import MongoDBClient
+
+from utils.mongo_utils import get_mongo_client
+from utils.mongo_utils import update_delete_id
+
+from models.data_model import convert_data_model
 
 
 
@@ -71,13 +78,6 @@ def action_by_received(event):
     deleted_mes_client.close()
 
 
-def get_mongo_client(db_name, coll_name):
-    mongo_db = MongoDBClient("127.0.0.1", 27017)
-    mongo_db.set_db(db_name)
-    mongo_db.set_collection(coll_name)
-    return mongo_db
-
-
 # this is update the existing data
 def add_data(conn_obj, iothub_client, blob_client, event_json):
     try:
@@ -94,17 +94,7 @@ def add_data(conn_obj, iothub_client, blob_client, event_json):
         target_device_list = conn_obj.car_list
     try:
         for device_id in target_device_list:
-            resp = iothub_client.get_device_info(device_id)
-            check_device_status(resp, device_id, iothub_client)
-            if resp.connection_state == "Connected":
-                props = generate_props("ADD")
-                try:
-                    logger.info("[ADD]Send data:" + data_str)
-                    iothub_client.iot_send_message(device_id, data_str, props)
-                    logger.info("[ADD]Send c2d message to " + device_id+ " successfully")
-                except Exception as se:
-                    logger.error("[ADD]Failed to send c2d message(ADD) to " + device_id + ". More details:" + str(se))
-                    print("[ADD]Failed to send c2d message(ADD) to " + device_id)
+            check_and_send_c2d_message(iothub_client, device_id, data_str, "ADD", logger)
     except Exception as add_e:
         logger.error("[ADD]Failed to handle add scenario, more details:" + str(add_e))
 
@@ -118,34 +108,22 @@ def other_data(conn_obj, iothub_client, blob_client, event_json):
             container_name = SCENARIO_SQUARE
             square_data = blob_client.download_data_blobs(square_id, container_name)
         else:
-            logger.warning("[ADD]No required addID attribute from D2C message.")
+            logger.warning("[OTHER]No required addID attribute from D2C message.")
     except Exception as e:
-        logger.warning("[ADD]Failed to get square data from cloud, square id:"+square_id+". More details:" +str(e))
+        logger.warning("[OTHER]Failed to get square data from cloud, square id:"+square_id+". More details:" +str(e))
 
     if square_data:
         message_str = set_add_message(conn_obj, square_id, square_data)
         target_device_list = conn_obj.phone_list
         target_device_list.extend(conn_obj.car_list)
 
-        logger.info("[ADD]Get the c2d message device list:" + str(target_device_list))
+        logger.info("[OTHER]Get the c2d message device list:" + str(target_device_list))
         for device_id in target_device_list:
             try:
-                resp = iothub_client.get_device_info(device_id)
-                # If the device does not online, store the delete information to mongo db
+                check_and_send_c2d_message(iothub_client, device_id, message_str, "OTHER", logger)
 
-                check_device_status(resp, device_id, iothub_client)
-                if resp.connection_state == "Connected":
-                    props = generate_props("ADD")
-                    try:
-                        logger.info("[ADD]Send c2d message:" + message_str)
-                        iothub_client.iot_send_message(device_id, message_str, props)
-                        logger.info("[ADD]Send c2d message to " + device_id + " successfully")
-                    except Exception as se:
-                        logger.error(
-                            "[ADD]Failed to send c2d message to " + device_id + ". More details:" + str(se))
-                        print("[ADD]Failed to send c2d message to " + device_id)
             except Exception as ae:
-                logger.error("[ADD]Failed get device infos, more details:" + str(ae))
+                logger.error("[OTHER]Failed get device infos, more details:" + str(ae))
 
 
 def set_add_message(conn_obj, square_id, blob_str):
@@ -281,24 +259,16 @@ def fetch_data(conn_obj, iothub_client, blob_client, mongo_client, event_json):
     # logger.info("[SYNC]Get the c2d message device list:" + str(target_device_list))
     blob_str = json.dumps(message_dict)
     try:
-        # logger.debug("[Start]Testing get device status the datetime:" + str(datetime.datetime.now()))
+
         device_id = conn_obj.device_id
-        resp = iothub_client.get_device_info(device_id)
-        logger.info("get device status:" + resp.connection_state)
-        check_device_status(resp, device_id, iothub_client, force_clean=True)
-        # logger.debug("[End]Testing get device status the datetime:" + str(datetime.datetime.now()))
-        # logger.debug("[Start]Testing send message the datetime:" + str(datetime.datetime.now()))
-        if resp.connection_state == "Connected":
-            props = generate_props("SYNC")
-            try:
-                logger.info("[SYNC]Send c2d message:" + blob_str)
-                iothub_client.iot_send_message(device_id, blob_str, props)
-                logger.info("[SYNC]Send c2d message to " + device_id + " successfully")
-                mongo_client.delete_data({"user_id": conn_obj.user_id, "device_id": device_id})
-            except Exception as se:
-                logger.error("[SYNC]Failed to send c2d message(SYNC) to " + device_id + ". More details:" + str(se))
-                print("[SYNC]Failed to send c2d message(SYNC) to " + device_id)
-            # logger.debug("[End]Testing send message the datetime:" + str(datetime.datetime.now()))
+        send_status = check_and_send_c2d_message(iothub_client, device_id, blob_str, "SYNC", logger)
+
+        # todo check if the device is connected
+        if send_status:
+            mongo_client.delete_data({"user_id": conn_obj.user_id, "device_id": device_id})
+        # confirm if it need force_client
+        # check_device_status(resp, device_id, iothub_client, force_clean=True)
+
     except Exception as syc_e:
         logger.error("[SYNC]Failed to handle sync scenario, more details:" + str(syc_e))
 
@@ -310,21 +280,21 @@ def get_whole_message(conn_obj, blob_client, mongo_client):
     logger.info("[SYNC]The whole message:" + json.dumps(user))
     return user
 
+
 def covert_message(blob_client, mongo_client, container_name, scenario_type, conn_obj):
+    # suppose only user customized data can be deleted
     logger.info("Start to get blob data.")
     data = {}
     try:
-        data_model = DataModel()
+        deleted_list = []
         if scenario_type=="ScenarioUser":
             result = mongo_client.select_data({"user_id": conn_obj.user_id, "device_id": conn_obj.device_id})
             if result and result.get("deleted_id"):
-                data_model.set_deleted_id(result["deleted_id"])
+                deleted_list = result["deleted_id"]
 
         blob_list = get_target_blobs(blob_client, container_name, scenario_type, conn_obj)
+        data = convert_data_model(blob_list, deleted_list, scenario_type)
 
-        data_model.set_content(blob_list)
-
-        data[scenario_type] = data_model.__dict__
     except Exception as ce:
         logger.warning("failed, more details:" + str(ce))
     return data
@@ -345,6 +315,7 @@ def get_target_blobs(blob_client, container_name, scenario_type, conn_obj):
         logger.warning("More details:" + str(e))
     return data_list
 
+
 def delete_data(conn_obj, iothub_client, blob_client, mongo_client, event_json):
     # mark the data in target db/blob
 
@@ -352,10 +323,11 @@ def delete_data(conn_obj, iothub_client, blob_client, mongo_client, event_json):
     user_data = event_json.get("ScenarioUser")
     scenario_id_list = user_data.get('deletedID')
     container_name = SCENARIO_USER
-    deleted_id_list = del_azure_blob(blob_client, scenario_id_list, container_name)
+    deleted_id_list = del_azure_blob(blob_client, scenario_id_list, container_name, logger)
 
     if deleted_id_list:
-        mes_dict = set_delete_message(deleted_id_list)
+
+        mes_dict = convert_data_model([], deleted_id_list, "ScenarioUser")
         message_str = json.dumps(mes_dict)
 
         # todo currently, only single phone and single car
@@ -367,48 +339,13 @@ def delete_data(conn_obj, iothub_client, blob_client, mongo_client, event_json):
 
         for device_id in target_device_list:
             try:
-                resp = iothub_client.get_device_info(device_id)
-                # If the device does not online, store the delete information to mongo db
-                if resp.connection_state == "Disconnected":
+                status = check_and_send_c2d_message(iothub_client, device_id, message_str, "DELETE", logger)
+                if not status:
+                    # If the device does not online, store the delete information to mongo db
                     update_delete_id(mongo_client, conn_obj.user_id, device_id, deleted_id_list)
-                check_device_status(resp, device_id, iothub_client)
-                if resp.connection_state == "Connected":
-                    props = generate_props("DELETE")
-                    try:
-                        logger.info("[DELETE]Send c2d message:" + message_str)
-                        iothub_client.iot_send_message(device_id, message_str, props)
-                        logger.info("[DELETE]Send c2d message to " + device_id + " successfully")
-                    except Exception as se:
-                        logger.error(
-                            "[Delete]Failed to send c2d message(del) to " + device_id + ". More details:" + str(se))
-                        print("[Delete]Failed to send c2d message(del) to " + device_id)
+
             except Exception as de:
                 logger.error("[Delete]Failed get device infos, more details:" + str(de))
-
-
-def set_delete_message(id_list):
-    mes_dict = {}
-    data_model = DataModel()
-    data_model.set_deleted_id(id_list)
-    mes_dict["ScenarioUser"] = data_model.__dict__
-    return mes_dict
-
-def del_azure_blob(blob_client, id_list, container_name):
-    deleted_id = []
-    for id in id_list:
-        try:
-            logger.info("[DELETE]Start delete the azure blob:" + str(id))
-            blob_client.delete_data(container_name, str(id))
-            deleted_id.append(str(id))
-        except ResourceNotFoundError as ne:
-            logger.warning("[DELETE]Not found the blob, maybe cache data in local(phone or car). Blob name:" + str(id))
-            deleted_id.append(str(id))
-
-        except Exception as e:
-            print('[DELETE]Failed to delete azure blob:' + str(id))
-            logger.error('[DELETE]Failed to delete azure blob:' + str(id) + ". More details:" + str(e))
-
-    return deleted_id
 
 
 def generate_props(operation_type):
@@ -432,13 +369,11 @@ def convert_to_str(byt):
 # get user, device information
 def get_event_prop(event):
     coll_client = get_mongo_client("scenario_db", "user")
-    # sys_props = event.system_properties
+
     event_props = event.properties
     logger.debug("Testing get the event props")
     logger.debug(event_props)
-    # device_type = convert_to_str(event_props.get(b"DEVICE_TYPE")) or "PHONE"
-    # operation_type = convert_to_str(event_props.get(b"OPERATION_TYPE")) or "SYNC"
-    # device_id = convert_to_str(event_props.get(b"$.cdid")) or "phone"
+
     device_type = convert_to_str(event_props.get(b"DEVICE_TYPE"))
     operation_type = convert_to_str(event_props.get(b"OPERATION_TYPE"))
     device_id_a = convert_to_str(event_props.get(b"$.cdid"))
@@ -459,15 +394,6 @@ def get_event_prop(event):
     iothub_conn_info_obj.parse_record()
     return iothub_conn_info_obj
 
-
-def update_delete_id(mongo_client, user_id, device_id, deleted_id_list):
-    condition = {"user_id": user_id, "device_id": device_id}
-    doc = {"user_id": user_id, "device_id": device_id, "deleted_id": deleted_id_list}
-    updated_doc = {'$addToSet':{"deleted_id":{"$each": deleted_id_list}}}
-    if mongo_client.select_data(condition):
-        mongo_client.update_data(condition, updated_doc)
-    else:
-        mongo_client.insert_data(doc)
 
 
 

@@ -62,3 +62,20 @@ class MongoDBClient(object):
                 self.client.close()
             except:
                 print("Failed to close mongo object client.")
+
+
+def update_delete_id(mongo_client, user_id, device_id, deleted_id_list):
+    condition = {"user_id": user_id, "device_id": device_id}
+    doc = {"user_id": user_id, "device_id": device_id, "deleted_id": deleted_id_list}
+    updated_doc = {'$addToSet':{"deleted_id":{"$each": deleted_id_list}}}
+    if mongo_client.select_data(condition):
+        mongo_client.update_data(condition, updated_doc)
+    else:
+        mongo_client.insert_data(doc)
+
+
+def get_mongo_client(db_name, coll_name):
+    mongo_db = MongoDBClient("127.0.0.1", 27017)
+    mongo_db.set_db(db_name)
+    mongo_db.set_collection(coll_name)
+    return mongo_db

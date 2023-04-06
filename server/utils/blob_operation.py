@@ -35,7 +35,7 @@ class BlobService(object):
         blob_client = container_client.get_blob_client(file_name)
         blob_client.delete_blob()
 
-    def list_data_blobs(self, container_name, scenario_type):
+    def list_data_blobs(self, container_name, scenario_type=None):
         container_client = self.create_container_client(container_name)
         blobs = container_client.list_blobs()
         return blobs
@@ -66,3 +66,21 @@ class BlobService(object):
     def close_client(self):
         if self.client:
             self.client.close()
+
+
+def del_azure_blob(blob_client, id_list, container_name, logger):
+    deleted_id = []
+    for id in id_list:
+        try:
+            logger.info("Start delete the azure blob:" + str(id))
+            blob_client.delete_data(container_name, str(id))
+            deleted_id.append(str(id))
+        except ResourceNotFoundError as ne:
+            logger.warning("Not found the blob, maybe cache data in local(phone or car). Blob name:" + str(id))
+            deleted_id.append(str(id))
+
+        except Exception as e:
+            print('Failed to delete azure blob:' + str(id))
+            logger.error('Failed to delete azure blob:' + str(id) + ". More details:" + str(e))
+
+    return deleted_id
