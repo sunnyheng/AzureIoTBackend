@@ -23,15 +23,10 @@
 
 # IOTHUB_PHONE_CONN = "HostName=issec-iot.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=IzKVWsLMKvNnnOS55NEZZKUHF4TmSx8cOznJtQy7SJI="
 IOTHUB_PHONE_CONN = "HostName=issec-dev.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=S3tabkHGbNZkYGUBl/zeyqd9LFhel7tWDqhY3HT7Mec="
-PHONE_DEVICE_ID = "phone"
 
 # IOTHUB_CAR_CONN = "HostName=issec-iot.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=IzKVWsLMKvNnnOS55NEZZKUHF4TmSx8cOznJtQy7SJI="
 IOTHUB_CAR_CONN = "HostName=issec-dev.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=S3tabkHGbNZkYGUBl/zeyqd9LFhel7tWDqhY3HT7Mec="
-CAR_DEVICE_ID = "car"
 
-IOTHUB_CONNS = [IOTHUB_PHONE_CONN, IOTHUB_CAR_CONN]
-
-DEVICE_IDS = [PHONE_DEVICE_ID, CAR_DEVICE_ID]
 
 # Endpoint=sb://iothub-ns-issec-dev-24881209-91f2b9a6de.servicebus.windows.net/;SharedAccessKeyName=iothubowner;SharedAccessKey=S3tabkHGbNZkYGUBl/zeyqd9LFhel7tWDqhY3HT7Mec=;EntityPath=issec-dev
 # CONN_EVENT_HUB="Endpoint=sb://ihsuprodhkres016dednamespace.servicebus.windows.net/;SharedAccessKeyName=iothubowner;SharedAccessKey=IzKVWsLMKvNnnOS55NEZZKUHF4TmSx8cOznJtQy7SJI=;EntityPath=iothub-ehub-issec-iot-24732222-7b8696b292"
@@ -39,8 +34,6 @@ CONN_EVENT_HUB="Endpoint=sb://iothub-ns-issec-dev-24881209-91f2b9a6de.servicebus
 CONSUMER_GROUP="$Default"
 
 BLOB_CONN_STR="DefaultEndpointsProtocol=https;AccountName=issecstorage;AccountKey=yDc44BJGtLYF/4E7JZwARzp/AWkidsVgIZVjd6CzzKY2x8uG0vurTt8va3EUmIoCnLZg2XEMerOr+AStTphecg==;EndpointSuffix=core.windows.net"
-CONTAINER_NAME = "scenaroiuser"
+
 SCENARIO_USER = "scenaroiuser"
 SCENARIO_SQUARE = "scenariosquare"
-SCENARIO_TMPL_NAME = "scenariosquare"
-

@@ -62,7 +62,7 @@ def get_blob_file():
     print(file_name)
     if file_name and file_name != "undefined":
         blob_service = BlobService(BLOB_CONN_STR)
-        blob_client = blob_service.client
+        blob_client = blob_service
         blob_json = read_blob(file_name, container_name, blob_client)
         blob_service.close_client()
         if blob_json:
@@ -229,7 +229,7 @@ def upload_content(data):
     if validate_content(json_data):
         try:
             blob_service = BlobService(BLOB_CONN_STR)
-            blob_client = blob_service.client
+            blob_client = blob_service
             file_name = str(json_data["id"])
 
             if isinstance(data, dict):
@@ -328,7 +328,7 @@ def validate_content(json_data):
 def list_blob(container_name):
     current_app.logger.info('[server.py] List blob from azure storage container.')
     blob_service = BlobService(BLOB_CONN_STR)
-    blob_client = blob_service.client
+    blob_client = blob_service
 
     blobs = blob_client.list_data_blobs(container_name)
     items = []
@@ -341,7 +341,7 @@ def list_blob(container_name):
 
 def read_blob(file_name, container_name, blob_client):
     try:
-        blobstr = blob_client.download_data_blobs(file_name, container_name, blob_client)
+        blobstr = blob_client.download_data_blobs(file_name, container_name)
         current_app.logger.info("Read blob:" + file_name)
         current_app.logger.info("Blob string: %s" % blobstr)
         blob_json = json.loads(blobstr)

@@ -70,6 +70,7 @@ def check_and_send_c2d_message(iothub_client, device_id, mes_str, mes_type, logg
             logger.info("[" + mes_type + "]" + "Send data:" + mes_str)
             iothub_client.iot_send_message(device_id, mes_str, props)
             logger.info("[" + mes_type + "]" + "Send c2d message to " + device_id+ " successfully")
+            iothub_client.delete_client()
             return True
         else:
             return False

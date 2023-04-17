@@ -20,8 +20,8 @@ from utils.iot_hub_cloud_service import check_and_send_c2d_message
 from connction_string import BLOB_CONN_STR, SCENARIO_USER, SCENARIO_SQUARE
 from utils.iot_log import logger
 
-from utils.mongo_utils import get_mongo_client
-from utils.mongo_utils import update_delete_id
+from utils.mongo_utils import get_mongo_client, update_buy_count, get_buy_count
+from utils.mongo_utils import update_delete_id, update_is_bought, get_is_bought
 
 from models.data_model import convert_data_model
 
@@ -30,7 +30,7 @@ from models.data_model import convert_data_model
 def action_by_received(event):
     # the iothub connection data, user, device id are saved in mongodb
     # currently, one db:scenario_db; four collections: user/resend_message/square_buy/square_count
-    # square_buy:{ "user_id" : "test123", "square_name" : "1000", "is_bought" : true }
+    # square_buy:{ "user_id" : "test123", "square_name" : ["1000"], "is_bought" : true }
     # square_count:{"square_name" : "1000", "count" : 0 }
     logger.info("Start create mongodb client, used for select/store deleted id.")
     deleted_mes_client = get_mongo_client("scenario_db", "resend_message")
@@ -61,12 +61,13 @@ def action_by_received(event):
 
     # update add logic, will send the square data from cloud, when car/phone add the customized scenario
     # event_json is {"ScenarioUser":{},"ScenarioSquare":{"addID":""}}
-    # 一键添加广场数据
+    # 一键添加广场数据 add new
     if action == "OTHER":
         other_data(conn_obj, iothub_client, blob_client, event_json)
 
     if action == "ADD":
         add_data(conn_obj, iothub_client, blob_client, event_json)
+
     if action == "SYNC":
         # todo 哪端sync，给哪端发消息, 如果是刚联网，需要把上次delete 的id 也发送下去
         fetch_data(conn_obj, iothub_client, blob_client, deleted_mes_client, event_json)
@@ -129,100 +130,25 @@ def other_data(conn_obj, iothub_client, blob_client, event_json):
 def set_add_message(conn_obj, square_id, blob_str):
     user_json = json.loads(blob_str)
     square_json = copy.deepcopy(user_json)
+    user_data_list = [user_json]
+    mes_dict = convert_data_model(user_data_list, [], "ScenarioUser")
 
-    mes_dict = {}
-    data_list = []
-    data_list.append(user_json)
-    user_model = DataModel()
-    user_model.set_content(data_list)
-    mes_dict["ScenarioUser"] = user_model.__dict__
-
+    # get is_bought information
     mongo_client = get_mongo_client("scenario_db", "square_buy")
+    square_id_list = [str(square_id)]
+    update_is_bought(mongo_client, conn_obj.user_id, square_id_list)
+    square_json["userBought"] = True
 
-    # buy_doc = {"user_id":conn_obj.user_id, "square_name":square_id}
-    # result = mongo_client.select_data(buy_doc)
-    # if not result:
-    #     buy_doc["is_bought"]=True
-    #     mongo_client.insert_data(buy_doc)
-
-    is_bought = resolve_is_bought(mongo_client, square_id)
-    square_json["userBought"] = is_bought
-
-    # mongo_client.set_db("square_count")
-    # square_id_doc = {"square_name": square_id}
-    # update_value = {"$inc": {"count": 1}}
-    # count = 1
-    # try:
-    #     result = mongo_client.select_data(square_id_doc)
-    #     if result:
-    #         count = count + result.get("count")
-    #         mongo_client.update_data(square_id_doc, update_value)
-    #     else:
-    #         mongo_client.insert_data({"square_name": square_id, "count": 0})
-    # except Exception as e:
-    #     # mongo_client.insert_data({"square_name": square_id, "count": 0})
-    #     logger.warning("Failed to update the value of buy count.")
-
-    count = resolve_buy_count(mongo_client, square_id)
-
+    # get buy_count info
+    mongo_client.set_db("square_count")
+    count = update_buy_count(mongo_client, square_id)
     square_json["buyCount"] = count
-    square_list = []
-    square_list.append(square_json)
-
-    square_model = DataModel()
-    square_model.set_content(square_list)
-    mes_dict["ScenarioSquare"] = square_model.__dict__
     mongo_client.close()
+    square_dict = convert_data_model(user_data_list, [], "ScenarioSquare")
+    mes_dict.update(square_dict)
+
     return json.dumps(mes_dict)
 
-
-def resolve_buy_count(mongo_client, square_id):
-    if mongo_client:
-        mongo_client.set_db("square_buy")
-    else:
-        mongo_client = get_mongo_client("scenario_db", "square_count")
-    square_id_doc = {"square_name": square_id}
-    update_value = {"$inc": {"count": 1}}
-    count = 1
-    try:
-        result = mongo_client.select_data(square_id_doc)
-        if result:
-            count = count + result.get("count")
-            mongo_client.update_data(square_id_doc, update_value)
-        else:
-            mongo_client.insert_data({"square_name": square_id, "count": 0})
-    except Exception as e:
-        # mongo_client.insert_data({"square_name": square_id, "count": 0})
-        logger.warning("Failed to update the value of buy count.")
-    return count
-
-#
-def resolve_is_bought(mongo_client, square_id, conn_obj):
-    if mongo_client:
-        mongo_client.set_db("square_buy")
-    else:
-        mongo_client = get_mongo_client("scenario_db", "square_buy")
-    buy_doc = {"user_id": conn_obj.user_id, "square_name": square_id}
-    result = mongo_client.select_data(buy_doc)
-    if not result:
-        buy_doc["is_bought"] = True
-        mongo_client.insert_data(buy_doc)
-    return True
-
-
-
-def check_device_status(resp, device_id, iothub_client, force_clean=False):
-    if (resp.connection_state == "Disconnected" or force_clean) and resp.cloud_to_device_message_count >= 20:
-        clean_message_queue(device_id, iothub_client)
-
-
-def clean_message_queue(device_id, iothub_client):
-    try:
-        count = iothub_client.purge_queue_message(device_id)
-        print("The device: " + device_id + "is disconnected, and purge the queue message:" + str(count))
-        logger.info("The device: " + device_id + "is disconnected, and purge the queue message:" + str(count))
-    except Exception as pe:
-        logger.warning("Failed to check the d2c message:" + device_id + ". More details:" + str(pe))
 
 def save_str_to_blobs(client, event_json):
     logger.info("[ADD]Start to save blob to azure")
@@ -254,9 +180,8 @@ def fetch_data(conn_obj, iothub_client, blob_client, mongo_client, event_json):
     # read date from blob and sent to iot
     # logger.debug("[Start]Testing get blobs the datetime:"+ str(datetime.datetime.now()))
     message_dict = get_whole_message(conn_obj, blob_client, mongo_client)
-    # logger.debug("[End]Testing get blobs the datetime:" + str(datetime.datetime.now()))
     # todo check logic, the side which request SYNC will repected a response
-    # logger.info("[SYNC]Get the c2d message device list:" + str(target_device_list))
+
     blob_str = json.dumps(message_dict)
     try:
 
@@ -268,7 +193,6 @@ def fetch_data(conn_obj, iothub_client, blob_client, mongo_client, event_json):
             mongo_client.delete_data({"user_id": conn_obj.user_id, "device_id": device_id})
         # confirm if it need force_client
         # check_device_status(resp, device_id, iothub_client, force_clean=True)
-
     except Exception as syc_e:
         logger.error("[SYNC]Failed to handle sync scenario, more details:" + str(syc_e))
 
@@ -307,13 +231,30 @@ def get_target_blobs(blob_client, container_name, scenario_type, conn_obj):
         for blob in blobs:
             logger.info("Get the blob name:" + str(blob.name))
             blob_str = blob_client.download_data_blobs(blob.name, container_name)
-            resolve_is_bought()
             blob_json = json.loads(blob_str)
+            square_info = get_buy_and_count_info(user_id, square_id, scenario_type)
+            blob_json.update(square_info)
             data_list.append(blob_json)
     except Exception as e:
         logger.warning("Failed to list blobs:" + container_name)
         logger.warning("More details:" + str(e))
     return data_list
+
+
+def get_buy_and_count_info(user_id, square_id, scenario_type):
+    square_dict = {}
+    if scenario_type == "ScenarioSquare":
+        mongo_client = get_mongo_client("scenario_db", "square_buy")
+        bought_status = get_is_bought(mongo_client, {"user_id": user_id}, square_id_list)
+        if not bought_status:
+            square_dict["userBought"] = False
+        else:
+            square_dict["userBought"] = True
+        mongo_client.set_db("square_count")
+        count = get_buy_count(mongo_client, {"square_id": square_id})
+        square_dict["count"] = count
+        mongo_client.close()
+    return square_dict
 
 
 def delete_data(conn_obj, iothub_client, blob_client, mongo_client, event_json):
@@ -347,16 +288,6 @@ def delete_data(conn_obj, iothub_client, blob_client, mongo_client, event_json):
             except Exception as de:
                 logger.error("[Delete]Failed get device infos, more details:" + str(de))
 
-
-def generate_props(operation_type):
-    cur_timestamp = int(time.time())
-    stamp = (cur_timestamp + 500) * 1000
-    props = {}
-    props.update(expiryTimeUtc=stamp)
-    props.update(contentType="application/json")
-    props.update(operation_type=operation_type)
-    props.update(currentTime=cur_timestamp)
-    return props
 
 
 def convert_to_str(byt):
